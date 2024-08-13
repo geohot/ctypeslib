@@ -204,8 +204,13 @@ class Generator:
         # is not code-generable ?
         # codegen should decide what codegen can do.
         if macro.args:
-            print("def %s%s:  # macro" % (macro.name, macro.args), file=self.stream)
-            print("   return %s  " % macro.body, file=self.stream)
+            all_known = all(x.name in self.names for x in macro.unknowns)
+            if all_known:
+                print("def %s%s:  # macro" % (macro.name, macro.args), file=self.stream)
+                print("   return %s  " % macro.body, file=self.stream)
+            else:
+                print("# def %s%s:  # macro" % (macro.name, macro.args), file=self.stream)
+                print("#    return %s  " % macro.body, file=self.stream)
         elif util.contains_undefined_identifier(macro):
             # we can't handle that, we comment it out
             if isinstance(macro.body, typedesc.UndefinedIdentifier):

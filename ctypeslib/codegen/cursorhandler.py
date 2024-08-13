@@ -1115,9 +1115,10 @@ class CursorHandler(ClangHandler):
         value = True
         # args should be filled when () are in tokens,
         args = None
+        unknowns = None
         if isinstance(tokens, list):
             # TODO, if there is an UndefinedIdentifier, we need to scrap the whole thing to comments.
-            # unknowns = [_ for _ in tokens if isinstance(_, typedesc.UndefinedIdentifier)]
+            unknowns = [_ for _ in tokens if isinstance(_, typedesc.UndefinedIdentifier)]
             # if len(unknowns) > 0:
             #     value = tokens
             # elif len(tokens) == 2:
@@ -1132,6 +1133,14 @@ class CursorHandler(ClangHandler):
                 if any(filter(lambda x: isinstance(x, typedesc.UndefinedIdentifier), tokens)):
                     # function macro or an expression.
                     str_tokens = [str(_) for _ in tokens[1:tokens.index(')')+1]]
+
+                    for x in tokens[1:tokens.index(')')+1]:
+                        if not isinstance(x, typedesc.UndefinedIdentifier): continue
+                        rm = []
+                        for i in range(len(unknowns)):
+                            if unknowns[i].name == x.name: rm.append(i)
+                    for x in rm[::-1]: unknowns.pop(x)
+
                     args = ''.join(str_tokens).replace(',', ', ')
                     str_tokens = [str(_) for _ in tokens[tokens.index(')')+1:]]
                     value = ''.join(str_tokens)
@@ -1157,7 +1166,7 @@ class CursorHandler(ClangHandler):
         if name in ['NULL', '__thread'] or value in ['__null', '__thread']:
             value = None
         log.debug('MACRO: #define %s%s %s', name, args or '', value)
-        obj = typedesc.Macro(name, args, value)
+        obj = typedesc.Macro(name, args, value, unknowns)
         try:
             self.register(name, obj)
         except DuplicateDefinitionException:

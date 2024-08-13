@@ -721,6 +721,17 @@ int add = concat(1, 2);
         self.convert('''#define ELF32_ST_TYPE(val)		((unsigned char)(val) & 0xf)''')
         self.assertIn("ELF32_ST_TYPE", self.namespace)
 
+    def test_simple_func_define_unknown_type(self):
+        self.convert('''#define ELF32_ST_TYPE(val)		MW((unsigned char)(val) & 0xf)''')
+        self.assertNotIn("ELF32_ST_TYPE", self.namespace)
+
+    def test_simple_func_define_2_funcs(self):
+        self.convert('''
+                     #define one(val) ((val) & 0xf)
+                     #define two(val) (one(val) + one(val * 2))''')
+        self.assertIn("one", self.namespace)
+        self.assertIn("two", self.namespace)
+
 
 if __name__ == "__main__":
     import logging
