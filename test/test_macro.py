@@ -728,6 +728,13 @@ int add = concat(1, 2);
     def test_simple_func_define_2_funcs(self):
         self.convert('''
                      #define one(val) ((val) & 0xf)
+                     #define two(val) one (val)''')
+        self.assertIn("one", self.namespace)
+        self.assertIn("two", self.namespace)
+    
+    def test_simple_func_define_2_funcs_2(self):
+        self.convert('''
+                     #define one(val) ((val) & 0xf)
                      #define two(val) (one(val) + one(val * 2))''')
         self.assertIn("one", self.namespace)
         self.assertIn("two", self.namespace)

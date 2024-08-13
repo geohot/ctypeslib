@@ -481,9 +481,11 @@ class CursorHandler(ClangHandler):
             value = self._clean_string_literal(cursor, value)
             return value
         final_value = []
+        skip_till = None
         # code.interact(local=locals())
         log.debug('cursor.type:%s', cursor.type.kind.name)
         for i, token in enumerate(tokens):
+            if skip_till is not None and i <= skip_till: continue
             value = token.spelling
             log.debug('token:%s tk.kd:%11s tk.cursor.kd:%15s cursor.kd:%15s',
                       token.spelling, token.kind.name, token.cursor.kind.name,
@@ -549,6 +551,20 @@ class CursorHandler(ClangHandler):
                         # parse that, try to see if there is another Macro in there.
                         if isinstance(self.get_registered(value), typedesc.Typedef):
                             value = None
+                        elif isinstance(self.get_registered(value), typedesc.Macro):
+                            if self.get_registered(value).args is None: value = self.get_registered(value).body
+                            else:
+                                pass
+                                # value = self.get_registered(value).body
+                                # skip_till = None
+
+                                # bal = 0
+                                # for j in range(i + 1, len(tokens)):
+                                #     if tokens[i].spelling == '(': bal+=1
+                                #     if tokens[i].spelling == ')': bal-=1
+                                #     if bal == 0: skip_till = j
+                                # assert skip_till > i + 1
+                                # print(value)
                         else:
                             value = self.get_registered(value).body
                         log.debug("Found MACRO_DEFINITION token identifier : %s", value)
@@ -1157,13 +1173,14 @@ class CursorHandler(ClangHandler):
                     value = ''.join(str_tokens)
                 else:
                     value = ''.join((str(_) for _ in tokens[1:tokens.index(')') + 1]))
-            elif len(tokens) > 2:
+            elif len(tokens) > 2 and len(unknowns) == 0 and ':' not in tokens:
                 # #define key a b c
-                value = list(tokens[1:])
+                # value = list(tokens[1:])
+                value = ' '.join(tokens[1:])
             else:
                 # FIXME no reach ?!
                 # just merge the list of tokens
-                value = ' '.join(tokens[1:])
+                value = list(tokens[1:])
         elif isinstance(tokens, str):
             # #define only
             value = True
