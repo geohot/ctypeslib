@@ -204,7 +204,7 @@ class Generator:
         # is not code-generable ?
         # codegen should decide what codegen can do.
         if macro.args:
-            all_known = all(x.name in self.names for x in macro.unknowns)
+            all_known = all(x.name in self.names for x in macro.unknowns) and '?' not in macro.body
             if all_known:
                 print("def %s%s:  # macro" % (macro.name, macro.args), file=self.stream)
                 print("   return %s  " % macro.body, file=self.stream)

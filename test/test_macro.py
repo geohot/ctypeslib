@@ -732,6 +732,20 @@ int add = concat(1, 2);
         self.assertIn("one", self.namespace)
         self.assertIn("two", self.namespace)
 
+    def test_simple_func_define_ors(self):
+        self.convert('''#define one(val) ((val) || 0xf)''')
+        self.assertIn("one", self.namespace)
+
+    def test_simple_func_define_tif(self):
+        self.convert('''#define one(val) ((val) ? 0xf : 0xd)''')
+        self.assertNotIn("one", self.namespace)
+
+    def test_simple_func_define_cast_2(self):
+        # TODO: ignored for now...
+        self.convert('''
+                     typedef int NvUint;
+                     #define one         ((NvUint)(~0))''')
+        self.assertNotIn("one", self.namespace)
 
 if __name__ == "__main__":
     import logging
