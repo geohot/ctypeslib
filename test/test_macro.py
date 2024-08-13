@@ -713,6 +713,14 @@ int add = concat(1, 2);
         self.assertIn("ret", self.namespace)
         self.assertEqual(self.namespace.ret, "mytextvalue")
 
+    def test_simple_func_define(self):
+        self.convert('''#define ELF32_ST_TYPE(val)		((val) & 0xf)''')
+        self.assertIn("ELF32_ST_TYPE", self.namespace)
+
+    def test_simple_func_define_cast(self):
+        self.convert('''#define ELF32_ST_TYPE(val)		((unsigned char)(val) & 0xf)''')
+        self.assertIn("ELF32_ST_TYPE", self.namespace)
+
 
 if __name__ == "__main__":
     import logging

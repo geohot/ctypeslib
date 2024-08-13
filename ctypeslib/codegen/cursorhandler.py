@@ -555,10 +555,13 @@ class CursorHandler(ClangHandler):
                     pass
                 elif token.kind == TokenKind.KEYWORD:  # noqa
                     log.debug("Got a MACRO_DEFINITION referencing a KEYWORD token.kind: %s", token.kind.name)
-                    value = typedesc.UndefinedIdentifier(value)
+                    value=None # HACK: remove casts
+                    # value = typedesc.UndefinedIdentifier(value)
                 elif token.kind in [TokenKind.COMMENT, TokenKind.PUNCTUATION]:  # noqa
                     # log.debug("Ignored MACRO_DEFINITION token.kind: %s", token.kind.name)
-                    pass
+                    if final_value[-1] == "(" and value == ")":
+                        final_value.pop()
+                        value = None
 
             # add token
             if value is not None:
