@@ -170,6 +170,30 @@ def contains_undefined_identifier(macro):
 
     return False
 
+def all_undefined_identifier(macro):
+    rres = []
+    if isinstance(macro, typedesc.Macro) and macro.unknowns is not None: rres += macro.unknowns
+    if not hasattr(macro, 'body'): return rres
+
+    # body is undefined
+    if isinstance(macro.body, typedesc.UndefinedIdentifier):
+        return rres + [macro.body]
+
+    def _list_contains_undefined_identifier(l):
+        res = []
+        for b in l:
+            if isinstance(b, typedesc.UndefinedIdentifier):
+                res += [b]
+            if isinstance(b, list):
+                res += all_undefined_identifier(b)
+        return res
+
+    # or one item is undefined
+    if isinstance(macro.body, list):
+        return _list_contains_undefined_identifier(macro.body)
+
+    return rres
+
 
 def token_is_string(token):
     # we need at list 2 delimiters in there

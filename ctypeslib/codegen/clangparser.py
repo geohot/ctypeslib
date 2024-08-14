@@ -419,5 +419,41 @@ typedef void* pointer_t;""",
             if isinstance(i, interesting):
                 result.append(i)
 
-        log.debug("parsed items order: %s", result)
-        return result
+        # toposort them
+        name2i = {}
+        for i,r in enumerate(result):
+            name2i[r.name] = i
+            if isinstance(r, typedesc.Enumeration):
+                for v in r.values:
+                    name2i[v.name] = i
+
+        edges = [list() for i in range(len(result))]
+        for i,r in enumerate(result):
+            x = util.all_undefined_identifier(r)
+            for x in util.all_undefined_identifier(r):
+                if x.name in name2i:
+                    edges[name2i[x.name]].append(i)
+
+        inDegree = [0] * len(result)
+        for i in range(len(result)):
+            for j in edges[i]:
+                inDegree[j] += 1
+
+        frontier = []
+        for i in range(len(result)):
+            if inDegree[i] == 0:
+                frontier.append(i)
+
+        order = []
+        while frontier:
+            i = min(frontier)
+            order.append(i)
+            frontier.remove(i)
+            for j in edges[i]:
+                inDegree[j] -= 1
+                if inDegree[j] == 0:
+                    frontier.append(j)
+
+        final_result = [result[i] for i in order]
+        log.debug("parsed items order: %s", final_result)
+        return final_result

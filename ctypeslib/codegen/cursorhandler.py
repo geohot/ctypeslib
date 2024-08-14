@@ -1151,10 +1151,19 @@ class CursorHandler(ClangHandler):
             elif tokens[1] == '(':
                 # #107, differentiate between function-like macro and expression in ()
                 # valid tokens for us are are '()[0-9],.e' and terminating LluU
-                if any(filter(lambda x: isinstance(x, typedesc.UndefinedIdentifier), tokens)):
-                    # function macro or an expression.
-                    str_tokens = [str(_) for _ in tokens[1:tokens.index(')')+1]]
+                args_tokens = [str(_) for _ in tokens[1:tokens.index(')')+1]]
+                body_tokens = [str(_) for _ in tokens[tokens.index(')')+1:]]
 
+                bal = 0
+                body_tokens_good = len(body_tokens) > 0
+                for t in body_tokens:
+                    if t == '(': bal += 1
+                    if t == ')': bal -= 1
+                    if bal < 0: body_tokens_good = False
+                body_tokens_good &= (bal == 0)
+
+                if any(filter(lambda x: isinstance(x, typedesc.UndefinedIdentifier), tokens)) and body_tokens_good:
+                    # function macro or an expression.
                     for x in tokens[1:tokens.index(')')+1]:
                         if not isinstance(x, typedesc.UndefinedIdentifier): continue
                         rm, found = [], 0
@@ -1168,9 +1177,8 @@ class CursorHandler(ClangHandler):
 
                         for x in rm[::-1]: unknowns.pop(x)
 
-                    args = ''.join(str_tokens).replace(',', ', ')
-                    str_tokens = [str(_) for _ in tokens[tokens.index(')')+1:]]
-                    value = ''.join(str_tokens)
+                    args = ''.join(args_tokens).replace(',', ', ')
+                    value = ''.join(body_tokens)
                 else:
                     value = ''.join((str(_) for _ in tokens[1:tokens.index(')') + 1]))
             elif len(tokens) > 2 and len(unknowns) == 0 and ':' not in tokens:

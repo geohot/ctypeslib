@@ -761,6 +761,19 @@ int add = concat(1, 2);
         self.assertIn("CL_VERSION_CURRENT", self.namespace)
         self.assertIn("CL_VERSION_RELEASE", self.namespace)
 
+    def test_simple_func_broken_body(self):
+        self.convert('''
+                    enum {
+	                    IOSQE_FIXED_FILE_BIT
+                    };
+                    #define IOSQE_FIXED_FILE	(1U << IOSQE_FIXED_FILE_BIT)''')
+        self.assertIn("IOSQE_FIXED_FILE_BIT", self.namespace)
+        self.assertIn("IOSQE_FIXED_FILE", self.namespace)
+
+    def test_simple_func_broken_body_2(self):
+        self.convert('''extern int mprotect (void *__addr, int __len, int __prot);''')
+        self.assertIn("mprotect", self.namespace)
+
     def test_simple_func_define_ors(self):
         self.convert('''#define one(val) ((val) || 0xf)''')
         self.assertIn("one", self.namespace)
