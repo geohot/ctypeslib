@@ -793,6 +793,17 @@ int add = concat(1, 2);
                      #define one         ((NvUint)(~0))''')
         self.assertNotIn("one", self.namespace)
 
+    def test_simple_func_ioctls(self):
+        self.convert('''#define AMDKFD_IO(nr)			_IO(AMDKFD_IOCTL_BASE, nr)
+                        #define AMDKFD_IOR(nr, type)		_IOR(AMDKFD_IOCTL_BASE, nr, type)
+                        #define AMDKFD_IOW(nr, type)		_IOW(AMDKFD_IOCTL_BASE, nr, type)
+                        #define AMDKFD_IOWR(nr, type)		_IOWR(AMDKFD_IOCTL_BASE, nr, type)
+
+                        #define AMDKFD_IOC_GET_VERSION			\
+                                AMDKFD_IOR(0x01, struct kfd_ioctl_get_version_args)''')
+        self.assertNotIn("one", self.namespace)
+
+
 if __name__ == "__main__":
     import logging
     logging.basicConfig(level=logging.DEBUG)

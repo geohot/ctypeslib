@@ -546,6 +546,10 @@ class CursorHandler(ClangHandler):
                 elif token.kind == TokenKind.IDENTIFIER:  # noqa
                     # log.debug("Ignored MACRO_DEFINITION token identifier : %s", value)
                     # Identifier in Macro... Not sure what to do with that.
+                    if i > 0 and tokens[i-1].spelling == "struct":
+                        final_value.pop()
+                        value = "struct_" + value
+
                     if self.is_registered(value):
                         # FIXME: if Macro is not a simple value replace, it should not be registered in the first place
                         # parse that, try to see if there is another Macro in there.
@@ -574,7 +578,7 @@ class CursorHandler(ClangHandler):
                     pass
                 elif token.kind == TokenKind.KEYWORD:  # noqa
                     log.debug("Got a MACRO_DEFINITION referencing a KEYWORD token.kind: %s", token.kind.name)
-                    replacer = {"void": "void"}
+                    replacer = {"void": "void", "struct": "struct"}
                     value=replacer.get(value, None)
                     # value = typedesc.UndefinedIdentifier(value)
                 elif token.kind in [TokenKind.COMMENT, TokenKind.PUNCTUATION]:  # noqa
@@ -1214,7 +1218,7 @@ class CursorHandler(ClangHandler):
         try:
             self.register(name, obj)
         except DuplicateDefinitionException:
-            log.info('Redefinition of %s %s->%s', name, self.parser.all[name].args, value)
+            log.info('Redefinition of %s %s->%s', name, getattr(self.parser.all[name], 'args', ''), value)
             # HACK
             self.parser.all[name] = obj
         self.set_location(obj, cursor)
