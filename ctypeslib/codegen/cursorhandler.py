@@ -574,7 +574,8 @@ class CursorHandler(ClangHandler):
                     pass
                 elif token.kind == TokenKind.KEYWORD:  # noqa
                     log.debug("Got a MACRO_DEFINITION referencing a KEYWORD token.kind: %s", token.kind.name)
-                    value=None # HACK: remove casts
+                    replacer = {"void": "void"}
+                    value=replacer.get(value, None)
                     # value = typedesc.UndefinedIdentifier(value)
                 elif token.kind in [TokenKind.COMMENT, TokenKind.PUNCTUATION]:  # noqa
                     # log.debug("Ignored MACRO_DEFINITION token.kind: %s", token.kind.name)
@@ -1179,6 +1180,13 @@ class CursorHandler(ClangHandler):
 
                     args = ''.join(args_tokens).replace(',', ', ')
                     value = ''.join(body_tokens)
+                elif not body_tokens_good:
+                    value = ''.join((str(_) for _ in tokens[1:]))
+                    if value.find("u64") >= 0: unknowns.append(typedesc.UndefinedIdentifier("mark_as_broken"))
+                    if value.find("u32") >= 0: unknowns.append(typedesc.UndefinedIdentifier("mark_as_broken"))
+                    if value.find("i64") >= 0: unknowns.append(typedesc.UndefinedIdentifier("mark_as_broken"))
+                    if value.find("i32") >= 0: unknowns.append(typedesc.UndefinedIdentifier("mark_as_broken"))
+                    if value.find("void*") >= 0: unknowns.append(typedesc.UndefinedIdentifier("mark_as_broken"))
                 else:
                     value = ''.join((str(_) for _ in tokens[1:tokens.index(')') + 1]))
             elif len(tokens) > 2 and len(unknowns) == 0 and ':' not in tokens:

@@ -774,6 +774,10 @@ int add = concat(1, 2);
         self.convert('''extern int mprotect (void *__addr, int __len, int __prot);''')
         self.assertIn("mprotect", self.namespace)
 
+    def test_simple_func_broken_body_3(self):
+        self.convert('''#define NV2080_GPUMON_PID_INVALID ((NvU32)(~0))''')
+        self.assertNotIn("NV2080_GPUMON_PID_INVALID", self.namespace)
+
     def test_simple_func_define_ors(self):
         self.convert('''#define one(val) ((val) || 0xf)''')
         self.assertIn("one", self.namespace)
