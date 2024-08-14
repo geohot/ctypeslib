@@ -556,19 +556,7 @@ class CursorHandler(ClangHandler):
                         if isinstance(self.get_registered(value), typedesc.Typedef):
                             value = None
                         elif isinstance(self.get_registered(value), typedesc.Macro):
-                            if self.get_registered(value).args is None: value = self.get_registered(value).body
-                            else:
-                                pass
-                                # value = self.get_registered(value).body
-                                # skip_till = None
-
-                                # bal = 0
-                                # for j in range(i + 1, len(tokens)):
-                                #     if tokens[i].spelling == '(': bal+=1
-                                #     if tokens[i].spelling == ')': bal-=1
-                                #     if bal == 0: skip_till = j
-                                # assert skip_till > i + 1
-                                # print(value)
+                            if self.get_registered(value).args is None: value = self.get_registered(value).toknes
                         else:
                             value = self.get_registered(value).body
                         log.debug("Found MACRO_DEFINITION token identifier : %s", value)
@@ -578,7 +566,7 @@ class CursorHandler(ClangHandler):
                     pass
                 elif token.kind == TokenKind.KEYWORD:  # noqa
                     log.debug("Got a MACRO_DEFINITION referencing a KEYWORD token.kind: %s", token.kind.name)
-                    replacer = {"void": "void", "struct": "struct"}
+                    replacer = {"void": "void", "struct": "struct", "sizeof": "sizeof"}
                     value=replacer.get(value, None)
                     # value = typedesc.UndefinedIdentifier(value)
                 elif token.kind in [TokenKind.COMMENT, TokenKind.PUNCTUATION]:  # noqa
@@ -1191,6 +1179,7 @@ class CursorHandler(ClangHandler):
                     if value.find("i64") >= 0: unknowns.append(typedesc.UndefinedIdentifier("mark_as_broken"))
                     if value.find("i32") >= 0: unknowns.append(typedesc.UndefinedIdentifier("mark_as_broken"))
                     if value.find("void*") >= 0: unknowns.append(typedesc.UndefinedIdentifier("mark_as_broken"))
+                    if value.find("sizeof") >= 0: unknowns.append(typedesc.UndefinedIdentifier("mark_as_broken"))
                 else:
                     value = ''.join((str(_) for _ in tokens[1:tokens.index(')') + 1]))
             elif len(tokens) > 2 and len(unknowns) == 0 and ':' not in tokens:
@@ -1214,7 +1203,7 @@ class CursorHandler(ClangHandler):
         if name in ['NULL', '__thread'] or value in ['__null', '__thread']:
             value = None
         log.debug('MACRO: #define %s%s %s', name, args or '', value)
-        obj = typedesc.Macro(name, args, value, unknowns)
+        obj = typedesc.Macro(name, args, value, tokens[1:], unknowns)
         try:
             self.register(name, obj)
         except DuplicateDefinitionException:

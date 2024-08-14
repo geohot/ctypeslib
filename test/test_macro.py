@@ -786,6 +786,14 @@ int add = concat(1, 2);
         self.convert('''#define one(val) ((val) ? 0xf : 0xd)''')
         self.assertNotIn("one", self.namespace)
 
+    def test_simple_func_define_order(self):
+        self.convert('''#define ION_FLAG_SECURE (1 << ION_HEAP_ID_RESERVED)
+                        #define ION_SECURE ION_FLAG_SECURE
+                        enum {ION_HEAP_ID_RESERVED = 31};''')
+        self.assertIn("ION_SECURE", self.namespace)
+        self.assertIn("ION_FLAG_SECURE", self.namespace)
+        print(self.text_output)
+
     def test_simple_func_define_cast_2(self):
         # TODO: ignored for now...
         self.convert('''
