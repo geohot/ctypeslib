@@ -214,7 +214,8 @@ class Generator:
             if x.name in {"_IO", "_IOW", "_IOR", "_IOWR"}: self.enable_ioctl()
 
         all_known = all(x.name in self.names for x in unknowns)
-        all_known &= ('?' not in macro.body if isinstance(macro.body, list) or isinstance(macro.body, str) else True)
+        if isinstance(macro.body, list) or isinstance(macro.body, str):
+            for b in ['?', ':']: all_known &= b not in macro.body
         if macro.args:
             if all_known:
                 print("def %s%s:  # macro" % (macro.name, macro.args), file=self.stream)
