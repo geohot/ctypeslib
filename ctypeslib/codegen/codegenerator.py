@@ -226,11 +226,11 @@ class Generator:
         elif not all_known:
             # we can't handle that, we comment it out
             if isinstance(macro.body, list):
-                print("# %s = %s # macro" % (macro.name, "".join([str(_) for _ in macro.body])), file=self.stream)
+                print("# %s = %s # macro" % (macro.name, " ".join([str(_) for _ in macro.body])), file=self.stream)
             else:
                 print("# %s = %s # macro" % (macro.name, macro.body), file=self.stream)
         elif isinstance(macro.body, list):
-            print("%s = %s # macro (from list)" % (macro.name, "".join([str(_) for _ in macro.body])), file=self.stream)
+            print("%s = %s # macro (from list)" % (macro.name, " ".join([str(_) for _ in macro.body])), file=self.stream)
         elif isinstance(macro.body, bool):
             print("%s = %s # macro" % (macro.name, macro.body), file=self.stream)
             self.macros += 1

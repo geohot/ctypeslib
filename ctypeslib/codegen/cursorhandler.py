@@ -566,7 +566,7 @@ class CursorHandler(ClangHandler):
                     pass
                 elif token.kind == TokenKind.KEYWORD:  # noqa
                     log.debug("Got a MACRO_DEFINITION referencing a KEYWORD token.kind: %s", token.kind.name)
-                    replacer = {"void": "void", "struct": "struct", "sizeof": "sizeof"}
+                    replacer = {"void": "void", "struct": "struct", "sizeof": "ctypes.sizeof"}
                     value=replacer.get(value, None)
                     # value = typedesc.UndefinedIdentifier(value)
                 elif token.kind in [TokenKind.COMMENT, TokenKind.PUNCTUATION]:  # noqa
@@ -579,7 +579,8 @@ class CursorHandler(ClangHandler):
 
             # add token
             if value is not None:
-                final_value.append(value)
+                if isinstance(value, list): final_value += value
+                else: final_value.append(value)
         # return the EXPR
         # code.interact(local=locals())
         # FIXME, that will break. We need constant type return
