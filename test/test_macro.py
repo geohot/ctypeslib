@@ -739,6 +739,28 @@ int add = concat(1, 2);
         self.assertIn("one", self.namespace)
         self.assertIn("two", self.namespace)
 
+    def test_simple_func_define_2_funcs_3(self):
+        self.convert('''
+                     #   define UVM_IOCTL_BASE(i) i
+                     #define UVM_RESERVE_VA                                                UVM_IOCTL_BASE(1)''')
+        self.assertIn("UVM_IOCTL_BASE", self.namespace)
+        self.assertIn("UVM_RESERVE_VA", self.namespace)
+
+    def test_simple_func_define_several(self):
+        self.convert('''
+                    #define CL_RELEASE_VERSION_CURRENT 6
+                    #define CL_MAJOR_VERSION_CURRENT   0
+                    #define CL_MINOR_VERSION_CURRENT   0
+                     #define CL_VERSION_CODE(rel, major, minor) ( ( ( (rel) << 16) ) | ( ( (major) << 8 )  ) | ( (minor) ) )
+                        #define CL_VERSION_CURRENT CL_VERSION_CODE(CL_RELEASE_VERSION_CURRENT, \
+                                                                CL_MAJOR_VERSION_CURRENT,   \
+                                                                CL_MINOR_VERSION_CURRENT)
+
+                        #define CL_VERSION_RELEASE(version)  ( ((version) >> 16) & 0xff )''')
+        self.assertIn("CL_VERSION_CODE", self.namespace)
+        self.assertIn("CL_VERSION_CURRENT", self.namespace)
+        self.assertIn("CL_VERSION_RELEASE", self.namespace)
+
     def test_simple_func_define_ors(self):
         self.convert('''#define one(val) ((val) || 0xf)''')
         self.assertIn("one", self.namespace)

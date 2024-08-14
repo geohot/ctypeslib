@@ -1166,7 +1166,7 @@ class CursorHandler(ClangHandler):
                             log.debug(f'MACRO: skipping gen of {tokens}')
                             unknowns.append(typedesc.UndefinedIdentifier("mark_as_broken"))
 
-                    for x in rm[::-1]: unknowns.pop(x)
+                        for x in rm[::-1]: unknowns.pop(x)
 
                     args = ''.join(str_tokens).replace(',', ', ')
                     str_tokens = [str(_) for _ in tokens[tokens.index(')')+1:]]
