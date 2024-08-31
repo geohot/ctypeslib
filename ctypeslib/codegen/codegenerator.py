@@ -95,6 +95,12 @@ class Generator:
         headers = pkgutil.get_data("ctypeslib", "data/structure_type.tpl").decode()
         print(headers, file=self.imports)
 
+    def enable_ioctl(self):
+        self.enable_ioctl = lambda: True
+        headers = pkgutil.get_data("ctypeslib", "data/ioctl.tpl").decode()
+        self.names += ["_IO", "_IOR", "_IOW", "_IOWR"]
+        print(headers, file=self.imports)
+
     def enable_string_cast(self):
         """
         If a structure type is used, declare our ctypes.Structure extension type
@@ -203,15 +209,28 @@ class Generator:
         # 2. or get a flag in macro that tells us if something contains undefinedIdentifier
         # is not code-generable ?
         # codegen should decide what codegen can do.
+        unknowns = util.all_undefined_identifier(macro)
+        for x in unknowns:
+            if x.name in {"_IO", "_IOW", "_IOR", "_IOWR"}: self.enable_ioctl()
+
+        all_known = all(x.name in self.names for x in unknowns)
+        if isinstance(macro.body, list) or isinstance(macro.body, str):
+            for b in ['?', ':']: all_known &= b not in macro.body
         if macro.args:
-            print("# def %s%s:  # macro" % (macro.name, macro.args), file=self.stream)
-            print("#    return %s  " % macro.body, file=self.stream)
-        elif util.contains_undefined_identifier(macro):
+            if all_known:
+                print("def %s%s:  # macro" % (macro.name, macro.args), file=self.stream)
+                print("   return %s  " % macro.body, file=self.stream)
+            else:
+                print("# def %s%s:  # macro" % (macro.name, macro.args), file=self.stream)
+                print("#    return %s  " % macro.body, file=self.stream)
+        elif not all_known:
             # we can't handle that, we comment it out
-            if isinstance(macro.body, typedesc.UndefinedIdentifier):
-                print("# %s = %s # macro" % (macro.name, macro.body.name), file=self.stream)
-            else:  # we assume it's a list
+            if isinstance(macro.body, list):
                 print("# %s = %s # macro" % (macro.name, " ".join([str(_) for _ in macro.body])), file=self.stream)
+            else:
+                print("# %s = %s # macro" % (macro.name, macro.body), file=self.stream)
+        elif isinstance(macro.body, list):
+            print("%s = %s # macro (from list)" % (macro.name, " ".join([str(_) for _ in macro.body])), file=self.stream)
         elif isinstance(macro.body, bool):
             print("%s = %s # macro" % (macro.name, macro.body), file=self.stream)
             self.macros += 1
