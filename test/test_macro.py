@@ -713,6 +713,104 @@ int add = concat(1, 2);
         self.assertIn("ret", self.namespace)
         self.assertEqual(self.namespace.ret, "mytextvalue")
 
+    def test_simple_func_define(self):
+        self.convert('''#define ELF32_ST_TYPE(val)		((val) & 0xf)''')
+        self.assertIn("ELF32_ST_TYPE", self.namespace)
+
+    def test_simple_func_define_cast(self):
+        self.convert('''#define ELF32_ST_TYPE(val)		((unsigned char)(val) & 0xf)''')
+        self.assertIn("ELF32_ST_TYPE", self.namespace)
+
+    def test_simple_func_define_unknown_type(self):
+        self.convert('''#define ELF32_ST_TYPE(val)		MW((unsigned char)(val) & 0xf)''')
+        self.assertNotIn("ELF32_ST_TYPE", self.namespace)
+
+    def test_simple_func_define_2_funcs(self):
+        self.convert('''
+                     #define one(val) ((val) & 0xf)
+                     #define two(val) one (val)''')
+        self.assertIn("one", self.namespace)
+        self.assertIn("two", self.namespace)
+    
+    def test_simple_func_define_2_funcs_2(self):
+        self.convert('''
+                     #define one(val) ((val) & 0xf)
+                     #define two(val) (one(val) + one(val * 2))''')
+        self.assertIn("one", self.namespace)
+        self.assertIn("two", self.namespace)
+
+    def test_simple_func_define_2_funcs_3(self):
+        self.convert('''
+                     #   define UVM_IOCTL_BASE(i) i
+                     #define UVM_RESERVE_VA                                                UVM_IOCTL_BASE(1)''')
+        self.assertIn("UVM_IOCTL_BASE", self.namespace)
+        self.assertIn("UVM_RESERVE_VA", self.namespace)
+
+    def test_simple_func_define_several(self):
+        self.convert('''
+                    #define CL_RELEASE_VERSION_CURRENT 6
+                    #define CL_MAJOR_VERSION_CURRENT   0
+                    #define CL_MINOR_VERSION_CURRENT   0
+                     #define CL_VERSION_CODE(rel, major, minor) ( ( ( (rel) << 16) ) | ( ( (major) << 8 )  ) | ( (minor) ) )
+                        #define CL_VERSION_CURRENT CL_VERSION_CODE(CL_RELEASE_VERSION_CURRENT, \
+                                                                CL_MAJOR_VERSION_CURRENT,   \
+                                                                CL_MINOR_VERSION_CURRENT)
+
+                        #define CL_VERSION_RELEASE(version)  ( ((version) >> 16) & 0xff )''')
+        self.assertIn("CL_VERSION_CODE", self.namespace)
+        self.assertIn("CL_VERSION_CURRENT", self.namespace)
+        self.assertIn("CL_VERSION_RELEASE", self.namespace)
+
+    def test_simple_func_broken_body(self):
+        self.convert('''
+                    enum {
+	                    IOSQE_FIXED_FILE_BIT
+                    };
+                    #define IOSQE_FIXED_FILE	(1U << IOSQE_FIXED_FILE_BIT)''')
+        self.assertIn("IOSQE_FIXED_FILE_BIT", self.namespace)
+        self.assertIn("IOSQE_FIXED_FILE", self.namespace)
+
+    def test_simple_func_broken_body_2(self):
+        self.convert('''extern int mprotect (void *__addr, int __len, int __prot);''')
+        self.assertIn("mprotect", self.namespace)
+
+    def test_simple_func_broken_body_3(self):
+        self.convert('''#define NV2080_GPUMON_PID_INVALID ((NvU32)(~0))''')
+        self.assertNotIn("NV2080_GPUMON_PID_INVALID", self.namespace)
+
+    def test_simple_func_define_ors(self):
+        self.convert('''#define one(val) ((val) || 0xf)''')
+        self.assertIn("one", self.namespace)
+
+    def test_simple_func_define_tif(self):
+        self.convert('''#define one(val) ((val) ? 0xf : 0xd)''')
+        self.assertNotIn("one", self.namespace)
+
+    def test_simple_func_define_order(self):
+        self.convert('''#define ION_FLAG_SECURE (1 << ION_HEAP_ID_RESERVED)
+                        #define ION_SECURE ION_FLAG_SECURE
+                        enum {ION_HEAP_ID_RESERVED = 31};''')
+        self.assertIn("ION_SECURE", self.namespace)
+        self.assertIn("ION_FLAG_SECURE", self.namespace)
+        print(self.text_output)
+
+    def test_simple_func_define_cast_2(self):
+        # TODO: ignored for now...
+        self.convert('''
+                     typedef int NvUint;
+                     #define one         ((NvUint)(~0))''')
+        self.assertNotIn("one", self.namespace)
+
+    def test_simple_func_ioctls(self):
+        self.convert('''#define AMDKFD_IO(nr)			_IO(AMDKFD_IOCTL_BASE, nr)
+                        #define AMDKFD_IOR(nr, type)		_IOR(AMDKFD_IOCTL_BASE, nr, type)
+                        #define AMDKFD_IOW(nr, type)		_IOW(AMDKFD_IOCTL_BASE, nr, type)
+                        #define AMDKFD_IOWR(nr, type)		_IOWR(AMDKFD_IOCTL_BASE, nr, type)
+
+                        #define AMDKFD_IOC_GET_VERSION			\
+                                AMDKFD_IOR(0x01, struct kfd_ioctl_get_version_args)''')
+        self.assertNotIn("one", self.namespace)
+
 
 if __name__ == "__main__":
     import logging

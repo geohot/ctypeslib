@@ -481,9 +481,11 @@ class CursorHandler(ClangHandler):
             value = self._clean_string_literal(cursor, value)
             return value
         final_value = []
+        skip_till = None
         # code.interact(local=locals())
         log.debug('cursor.type:%s', cursor.type.kind.name)
         for i, token in enumerate(tokens):
+            if skip_till is not None and i <= skip_till: continue
             value = token.spelling
             log.debug('token:%s tk.kd:%11s tk.cursor.kd:%15s cursor.kd:%15s',
                       token.spelling, token.kind.name, token.cursor.kind.name,
@@ -544,10 +546,19 @@ class CursorHandler(ClangHandler):
                 elif token.kind == TokenKind.IDENTIFIER:  # noqa
                     # log.debug("Ignored MACRO_DEFINITION token identifier : %s", value)
                     # Identifier in Macro... Not sure what to do with that.
+                    if i > 0 and tokens[i-1].spelling == "struct":
+                        final_value.pop()
+                        value = "struct_" + value
+
                     if self.is_registered(value):
                         # FIXME: if Macro is not a simple value replace, it should not be registered in the first place
                         # parse that, try to see if there is another Macro in there.
-                        value = self.get_registered(value).body
+                        if isinstance(self.get_registered(value), typedesc.Typedef):
+                            value = None
+                        elif isinstance(self.get_registered(value), typedesc.Macro):
+                            if self.get_registered(value).args is None: value = self.get_registered(value).toknes
+                        else:
+                            value = self.get_registered(value).body
                         log.debug("Found MACRO_DEFINITION token identifier : %s", value)
                     else:
                         value = typedesc.UndefinedIdentifier(value)
@@ -555,14 +566,21 @@ class CursorHandler(ClangHandler):
                     pass
                 elif token.kind == TokenKind.KEYWORD:  # noqa
                     log.debug("Got a MACRO_DEFINITION referencing a KEYWORD token.kind: %s", token.kind.name)
-                    value = typedesc.UndefinedIdentifier(value)
+                    replacer = {"void": "void", "struct": "struct", "sizeof": "ctypes.sizeof"}
+                    value=replacer.get(value, None)
+                    # value = typedesc.UndefinedIdentifier(value)
                 elif token.kind in [TokenKind.COMMENT, TokenKind.PUNCTUATION]:  # noqa
                     # log.debug("Ignored MACRO_DEFINITION token.kind: %s", token.kind.name)
-                    pass
+                    replacer = {"||": " or ", "&&": " and "}
+                    value = replacer.get(value, value)
+                    if final_value[-1] == "(" and value == ")":
+                        final_value.pop()
+                        value = None
 
             # add token
             if value is not None:
-                final_value.append(value)
+                if isinstance(value, list): final_value += value
+                else: final_value.append(value)
         # return the EXPR
         # code.interact(local=locals())
         # FIXME, that will break. We need constant type return
@@ -1112,9 +1130,10 @@ class CursorHandler(ClangHandler):
         value = True
         # args should be filled when () are in tokens,
         args = None
+        unknowns = None
         if isinstance(tokens, list):
             # TODO, if there is an UndefinedIdentifier, we need to scrap the whole thing to comments.
-            # unknowns = [_ for _ in tokens if isinstance(_, typedesc.UndefinedIdentifier)]
+            unknowns = [_ for _ in tokens if isinstance(_, typedesc.UndefinedIdentifier)]
             # if len(unknowns) > 0:
             #     value = tokens
             # elif len(tokens) == 2:
@@ -1126,21 +1145,52 @@ class CursorHandler(ClangHandler):
             elif tokens[1] == '(':
                 # #107, differentiate between function-like macro and expression in ()
                 # valid tokens for us are are '()[0-9],.e' and terminating LluU
-                if any(filter(lambda x: isinstance(x, typedesc.UndefinedIdentifier), tokens)):
+                args_tokens = [str(_) for _ in tokens[1:tokens.index(')')+1]]
+                body_tokens = [str(_) for _ in tokens[tokens.index(')')+1:]]
+
+                bal = 0
+                body_tokens_good = len(body_tokens) > 0
+                for t in body_tokens:
+                    if t == '(': bal += 1
+                    if t == ')': bal -= 1
+                    if bal < 0: body_tokens_good = False
+                body_tokens_good &= (bal == 0)
+
+                if any(filter(lambda x: isinstance(x, typedesc.UndefinedIdentifier), tokens)) and body_tokens_good:
                     # function macro or an expression.
-                    str_tokens = [str(_) for _ in tokens[1:tokens.index(')')+1]]
-                    args = ''.join(str_tokens).replace(',', ', ')
-                    str_tokens = [str(_) for _ in tokens[tokens.index(')')+1:]]
-                    value = ''.join(str_tokens)
+                    for x in tokens[1:tokens.index(')')+1]:
+                        if not isinstance(x, typedesc.UndefinedIdentifier): continue
+                        rm, found = [], 0
+                        for i in range(len(unknowns)):
+                            if unknowns[i].name == x.name:
+                                rm.append(i)
+                                found += 1
+                        if found < 2:
+                            log.debug(f'MACRO: skipping gen of {tokens}')
+                            unknowns.append(typedesc.UndefinedIdentifier("mark_as_broken"))
+
+                        for x in rm[::-1]: unknowns.pop(x)
+
+                    args = ''.join(args_tokens).replace(',', ', ')
+                    value = ''.join(body_tokens)
+                elif not body_tokens_good:
+                    value = ''.join((str(_) for _ in tokens[1:]))
+                    if value.find("u64") >= 0: unknowns.append(typedesc.UndefinedIdentifier("mark_as_broken"))
+                    if value.find("u32") >= 0: unknowns.append(typedesc.UndefinedIdentifier("mark_as_broken"))
+                    if value.find("i64") >= 0: unknowns.append(typedesc.UndefinedIdentifier("mark_as_broken"))
+                    if value.find("i32") >= 0: unknowns.append(typedesc.UndefinedIdentifier("mark_as_broken"))
+                    if value.find("void*") >= 0: unknowns.append(typedesc.UndefinedIdentifier("mark_as_broken"))
+                    if value.find("sizeof") >= 0: unknowns.append(typedesc.UndefinedIdentifier("mark_as_broken"))
                 else:
                     value = ''.join((str(_) for _ in tokens[1:tokens.index(')') + 1]))
-            elif len(tokens) > 2:
+            elif len(tokens) > 2 and len(unknowns) == 0 and ':' not in tokens:
                 # #define key a b c
-                value = list(tokens[1:])
+                # value = list(tokens[1:])
+                value = ' '.join(tokens[1:])
             else:
                 # FIXME no reach ?!
                 # just merge the list of tokens
-                value = ' '.join(tokens[1:])
+                value = list(tokens[1:])
         elif isinstance(tokens, str):
             # #define only
             value = True
@@ -1154,11 +1204,11 @@ class CursorHandler(ClangHandler):
         if name in ['NULL', '__thread'] or value in ['__null', '__thread']:
             value = None
         log.debug('MACRO: #define %s%s %s', name, args or '', value)
-        obj = typedesc.Macro(name, args, value)
+        obj = typedesc.Macro(name, args, value, tokens[1:], unknowns)
         try:
             self.register(name, obj)
         except DuplicateDefinitionException:
-            log.info('Redefinition of %s %s->%s', name, self.parser.all[name].args, value)
+            log.info('Redefinition of %s %s->%s', name, getattr(self.parser.all[name], 'args', ''), value)
             # HACK
             self.parser.all[name] = obj
         self.set_location(obj, cursor)

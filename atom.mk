@@ -17,6 +17,7 @@ LOCAL_COPY_FILES := \
 	ctypeslib/codegen/util.py:usr/lib/python/site-packages/ctypeslib/codegen/ \
 	ctypeslib/data/fundamental_type_name.tpl:usr/lib/python/site-packages/ctypeslib/data/ \
 	ctypeslib/data/headers.tpl:usr/lib/python/site-packages/ctypeslib/data/ \
+	ctypeslib/data/ioctl.tpl:usr/lib/python/site-packages/ctypeslib/data/ \
 	ctypeslib/data/pointer_type.tpl:usr/lib/python/site-packages/ctypeslib/data/ \
 	ctypeslib/data/string_cast.tpl:usr/lib/python/site-packages/ctypeslib/data/ \
 	ctypeslib/data/structure_type.tpl:usr/lib/python/site-packages/ctypeslib/data/ \

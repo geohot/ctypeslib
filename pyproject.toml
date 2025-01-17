@@ -33,6 +33,7 @@ include-package-data = false
 ctypeslib = [
     "data/fundamental_type_name.tpl",
     "data/headers.tpl",
+    "data/ioctl.tpl",
     "data/pointer_type.tpl",
     "data/string_cast.tpl",
     "data/structure_type.tpl",

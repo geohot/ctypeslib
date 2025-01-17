@@ -5,6 +5,7 @@ from clang.cindex import CursorKind, TypeKind
 from ctypeslib.codegen import typedesc
 from ctypeslib.codegen.util import log_entity
 
+import re
 import logging
 log = logging.getLogger('handler')
 
@@ -149,6 +150,13 @@ class ClangHandler(object):
                 #import code
                 #code.interact(local=locals())
                 return ''
+
+        # rewrite with unnamed/anonymous parts.
+        pattern = r'\s+\(unnamed at .*/(.*?).h:(\d+):\d+\)'
+        name = re.sub(pattern, lambda x: f"_{x.group(1)}_h_{x.group(2)}", name)
+        pattern = r'\s+\(anonymous at .*/(.*?).h:(\d+):\d+\)'
+        name = re.sub(pattern, lambda x: f"_{x.group(1)}_h_{x.group(2)}", name)
+
         if cursor.kind in [CursorKind.STRUCT_DECL,CursorKind.UNION_DECL,
                                  CursorKind.CLASS_DECL, CursorKind.CXX_BASE_SPECIFIER]:
             names= {CursorKind.STRUCT_DECL: 'struct',

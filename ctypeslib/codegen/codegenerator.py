@@ -22,6 +22,7 @@ from ctypeslib.codegen import clangparser
 from ctypeslib.codegen import config
 from ctypeslib.codegen import typedesc
 from ctypeslib.codegen import util
+from ctypeslib.oset import OSet
 from ctypeslib.library import Library
 
 log = logging.getLogger("codegen")
@@ -50,8 +51,8 @@ class Generator:
         self.macros = 0
         self.cross_arch_code_generation = cfg.cross_arch
         # what record dependency were generated
-        self.head_generated = set()
-        self.body_generated = set()
+        self.head_generated = OSet()
+        self.body_generated = OSet()
 
     # pylint: disable=method-hidden
     def enable_fundamental_type_wrappers(self):
@@ -93,6 +94,12 @@ class Generator:
         """
         self.enable_structure_type = lambda: True
         headers = pkgutil.get_data("ctypeslib", "data/structure_type.tpl").decode()
+        print(headers, file=self.imports)
+
+    def enable_ioctl(self):
+        self.enable_ioctl = lambda: True
+        headers = pkgutil.get_data("ctypeslib", "data/ioctl.tpl").decode()
+        self.names += ["_IO", "_IOR", "_IOW", "_IOWR"]
         print(headers, file=self.imports)
 
     def enable_string_cast(self):
@@ -203,15 +210,28 @@ class Generator:
         # 2. or get a flag in macro that tells us if something contains undefinedIdentifier
         # is not code-generable ?
         # codegen should decide what codegen can do.
+        unknowns = util.all_undefined_identifier(macro)
+        for x in unknowns:
+            if x.name in {"_IO", "_IOW", "_IOR", "_IOWR"}: self.enable_ioctl()
+
+        all_known = all(x.name in self.names for x in unknowns)
+        if isinstance(macro.body, list) or isinstance(macro.body, str):
+            for b in ['?', ':']: all_known &= b not in macro.body
         if macro.args:
-            print("# def %s%s:  # macro" % (macro.name, macro.args), file=self.stream)
-            print("#    return %s  " % macro.body, file=self.stream)
-        elif util.contains_undefined_identifier(macro):
+            if all_known:
+                print("def %s%s:  # macro" % (macro.name, macro.args), file=self.stream)
+                print("   return %s  " % macro.body, file=self.stream)
+            else:
+                print("# def %s%s:  # macro" % (macro.name, macro.args), file=self.stream)
+                print("#    return %s  " % macro.body, file=self.stream)
+        elif not all_known:
             # we can't handle that, we comment it out
-            if isinstance(macro.body, typedesc.UndefinedIdentifier):
-                print("# %s = %s # macro" % (macro.name, macro.body.name), file=self.stream)
-            else:  # we assume it's a list
+            if isinstance(macro.body, list):
                 print("# %s = %s # macro" % (macro.name, " ".join([str(_) for _ in macro.body])), file=self.stream)
+            else:
+                print("# %s = %s # macro" % (macro.name, macro.body), file=self.stream)
+        elif isinstance(macro.body, list):
+            print("%s = %s # macro (from list)" % (macro.name, " ".join([str(_) for _ in macro.body])), file=self.stream)
         elif isinstance(macro.body, bool):
             print("%s = %s # macro" % (macro.name, macro.body), file=self.stream)
             self.macros += 1
@@ -551,7 +571,7 @@ class Generator:
             return
         self.enable_structure_type()
         self._structures += 1
-        depends = set()
+        depends = OSet()
         # We only print a empty struct.
         if struct.members is None:
             log.info("No members for: %s", struct.name)
