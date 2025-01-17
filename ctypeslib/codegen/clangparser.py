@@ -11,6 +11,7 @@ from ctypeslib.codegen import cursorhandler
 from ctypeslib.codegen import typedesc
 from ctypeslib.codegen import typehandler
 from ctypeslib.codegen import util
+from ctypeslib.oset import OSet
 from ctypeslib.codegen.handler import DuplicateDefinitionException
 from ctypeslib.codegen.handler import InvalidDefinitionError
 from ctypeslib.codegen.handler import InvalidTranslationUnitException
@@ -70,7 +71,7 @@ class Clang_Parser:
     def __init__(self, flags):
         self.all = collections.OrderedDict()
         # a shortcut to identify registered decl in cases of records
-        self.all_set = set()
+        self.all_set = OSet()
         self.cpp_data = {}
         self._unhandled = []
         self.fields = {}
@@ -83,7 +84,7 @@ class Clang_Parser:
         self.cursorkind_handler = cursorhandler.CursorHandler(self)
         self.typekind_handler = typehandler.TypeHandler(self)
         self.__filter_location = None
-        self.__processed_location = set()
+        self.__processed_location = OSet()
 
     def init_parsing_options(self):
         """Set the Translation Unit to skip functions bodies per default."""

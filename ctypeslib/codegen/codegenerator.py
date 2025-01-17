@@ -22,6 +22,7 @@ from ctypeslib.codegen import clangparser
 from ctypeslib.codegen import config
 from ctypeslib.codegen import typedesc
 from ctypeslib.codegen import util
+from ctypeslib.oset import OSet
 from ctypeslib.library import Library
 
 log = logging.getLogger("codegen")
@@ -50,8 +51,8 @@ class Generator:
         self.macros = 0
         self.cross_arch_code_generation = cfg.cross_arch
         # what record dependency were generated
-        self.head_generated = set()
-        self.body_generated = set()
+        self.head_generated = OSet()
+        self.body_generated = OSet()
 
     # pylint: disable=method-hidden
     def enable_fundamental_type_wrappers(self):
@@ -570,7 +571,7 @@ class Generator:
             return
         self.enable_structure_type()
         self._structures += 1
-        depends = set()
+        depends = OSet()
         # We only print a empty struct.
         if struct.members is None:
             log.info("No members for: %s", struct.name)
